@@ -5,7 +5,7 @@
    GenDyn Oscillator
 
     The GENDYN algorithm (Iannis Xenakis) implemented here is inspired by 
-    the Supercollider version by Nic Collins, see:
+    the Supercollider version by Nick Collins, see:
     https://github.com/supercollider/supercollider/blob/develop/server/plugins/GendynUGens.cpp
 
     + in this version, only the amplitudes are modulated by the stochastic 
