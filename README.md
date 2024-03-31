@@ -15,8 +15,9 @@ process, not the durations.
 - The 5 distributions are interpolated by mean of the "Dist" parameter
 
 # PCB
-The code in this repository is designed to run on a Teensy 4.0 board, equipped with a DAC such as PCM5102 or the Teensy Audio Shield.
-A schematic diagram is provided here, as well as gerber files and a BOM sheet for ordering a PCB.
+The code in this repository is designed to run on a Teensy 4.0 board, equipped with a multiplexer and a DAC such as PCM5102 or the Teensy Audio Shield (See the provided schematic diagram for details)
+
+Gerber files and a BOM sheet are also provided for ordering a PCB.
 
 
 ![3drender](https://github.com/spareknobs/Eris/blob/main/pcb/Eris_v_1_1_pcb_render_3d.png)
