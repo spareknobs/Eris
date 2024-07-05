@@ -1,6 +1,6 @@
 /*
    Eris - Dynamic Stochastic Synthesizer
-   Spare Knobs 2020-2022
+   Spare Knobs 2020-2024
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -31,8 +31,8 @@
 
 // uncommet to enable MIDI capabilities (work in progress!)
 //#define ENABLE_MIDI
-
-#define LOOP_TIME 5  // control rate (ms) 
+#define INT_LED 13
+#define LOOP_TIME 1  // control rate (ms) 
 #define KNOB_FILTER_LENGTH 20
 
 #define KS_BIASGAIN 25 // keyswitch to set AR bias gain with Master knob
@@ -203,7 +203,7 @@ void ReadSwitches(){
     module.SetRateMod( (bool)!digitalRead(RATEMOD) );
     module.SetCutoffMod( (bool)!digitalRead(CUTMOD) );
     module.SetGen2ToOut( (bool)!digitalRead(GEN2OUT) );
-    module.SetGen2Range( !digitalRead(RANGE) ); // note: this up
+    module.SetGen2Range( digitalRead(RANGE) ); // note: this down
     module.SyncGens( (bool)!digitalRead(SYNC) );
 }
 
@@ -331,11 +331,10 @@ void setup(){
         knob[k].begin(SMOOTHED_AVERAGE, KNOB_FILTER_LENGTH);
     }
 
-    // Init GenDyns using status of the synth knobs
     float vpSeeds[NUM_CONTROL_PTS_MAX];
     int navailseeds = min(NUM_CONTROL_PTS_MAX,cNumKnobs);
-
     for ( int i=0; i < navailseeds; i++ ) {
+         // Init GenDyns using status of the synth knobs
         //vpSeeds[i] = 2.f * (float)knob[i].get() / 1023.f - 1.f;
         vpSeeds[i] = 0.f;
     }
@@ -363,7 +362,6 @@ void setup(){
     module.SetCutoff(8000.f);
     module.SetResonance(1.f);
     module.SetVCABiasGain(0.f);
-    module.SetMasterGain(1.f);
     module.SetRateMod(0);
     module.SetCutoffMod(0);
     module.SetGen2ToOut(1);
@@ -377,8 +375,10 @@ void setup(){
     usbMIDI.setHandleControlChange(ControlChange);
     #endif
 
-    //Serial.begin(9600);
     //AudioInterrupts();
+
+    digitalWrite(INT_LED,HIGH);
+
 }
 
 //-------------------------------------------------------------------

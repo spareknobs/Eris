@@ -24,26 +24,27 @@ void AREnv::Process ( audio_block_t *apOut, int acSamples ) {
 
     int16_t* vpIn = apOut->data;
 
-    UpdateGain();
-     
     switch (mState)
     {
       case EnvState_Off:
       {
-        int32_t vgain = (int32_t)( mCurBias * 65536.f );
-        MulC( vpIn, vgain );
+        for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
+          UpdateGain();
+          int32_t vgain = min(mCurBias,65536);
+          vpIn[n] = ( vgain * vpIn[n] ) >> 16;
+        }
       }
         break;
 
       case EnvState_Attack:
       {
         for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
-          int32_t vgain = (int32_t)( (mCurBias + mCurPeak) * 65536.f );
-          vgain = min(vgain,65536);
+          UpdateGain();
+          int32_t vgain = min( mCurBias + mCurPeak, 65536 );
           vpIn[n] = ( vgain * vpIn[n] ) >> 16;
           mCurPeak += mStep;
-          mCurPeak = min(mCurPeak,1.f);
-          if ( ( mStep>0.f && mCurPeak>=mPeak_req) || ( mStep<0.f && mCurPeak<=mPeak_req) ) {
+          mCurPeak = min(mCurPeak, 65536);
+          if ( ( mStep>0 && mCurPeak>=mPeak_req) || ( mStep<0 && mCurPeak<=mPeak_req) ) {
               mState = EnvState_Hold;
           }
         }
@@ -52,20 +53,23 @@ void AREnv::Process ( audio_block_t *apOut, int acSamples ) {
   
       case EnvState_Hold:
       {
-        int32_t vgain = (int32_t)( (mCurBias + mCurPeak) * 65536.f );
-        MulC( vpIn, vgain );  
+        for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
+          UpdateGain();
+          int32_t vgain = min(mCurBias + mCurPeak, 65536);
+          vpIn[n] = ( vgain * vpIn[n] ) >> 16;
+        }
       }
         break;
   
       case EnvState_Release:  
       {
         for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
-          int32_t vgain = (int32_t)( (mCurBias + mCurPeak) * 65536.f );
-          vgain = min(vgain,65536);
+          UpdateGain();
+          int32_t vgain = min(mCurBias + mCurPeak, 65536);
           vpIn[n] = ( vgain * vpIn[n] ) >> 16;
           mCurPeak += mStep;
-          mCurPeak = max(mCurPeak,0.f);
-          if ( mCurPeak <= 0.f ) {
+          mCurPeak = max(mCurPeak,0);
+          if ( mCurPeak <= 0 ) {
             mState = EnvState_Off;
           } 
         }
@@ -76,8 +80,8 @@ void AREnv::Process ( audio_block_t *apOut, int acSamples ) {
 
 void AREnv::TriggerAttack(){
     mAttack = mAttack_req;
-    float vdelta = mPeak_req - mCurPeak;
-    mStep = vdelta / (float)mAttack;
+    int32_t vdelta = mPeak_req - mCurPeak;
+    mStep = vdelta / mAttack;
     mState = EnvState_Attack;
     Serial.println("TriggerAttack");
     Serial.println(mStep);
@@ -85,21 +89,20 @@ void AREnv::TriggerAttack(){
 
 void AREnv::TriggerRelease(){
   mRelease = mRelease_req;
-  float vdelta = mCurPeak;
-  mStep = -vdelta / (float)mRelease;
+  int32_t vdelta = mCurPeak;
+  mStep = -vdelta / mRelease;
   mState = EnvState_Release;
   Serial.println("TriggerRelease: step = ");
   Serial.println(mStep);
 }
 
-// :TODO: refact optim
 void AREnv::UpdateGain(){
   if ( mCurBias < mBias_req ){
-        mCurBias += GAIN_STEP_PER_FRAME;
+        mCurBias += GAIN_STEP_PER_SAMPLE;
         if ( mCurBias > mBias_req )  mCurBias = mBias_req; 
       }
       else if ( mCurBias > mBias_req ){
-        mCurBias -= GAIN_STEP_PER_FRAME;
+        mCurBias -= GAIN_STEP_PER_SAMPLE;
         if ( mCurBias < mBias_req )  mCurBias = mBias_req; 
       }
 }

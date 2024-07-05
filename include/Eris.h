@@ -28,17 +28,43 @@
 #include "MIDI.h"
 
 #define Q_SCALER_16 32767.0
+#define Q_DIV_16 3e-5
 #define Q_SCALER_32 64536.0
 #define NUM_MEMORY_BLOCKS 50
-#define GAIN_RAMP_STEP 0.00001f
+#define GAIN_RAMP_STEP 10
 #define SR_DEF 44100.0
-#define MAX_OSC_GAIN 0.6f
+#define MAX_OSC_GAIN 0.36
 #define MAX_LFO_GAIN 1.f
 #define VCF_OCTAVERANGE 7.f
 #define DIV127 1.f/127.f
 
 #define  NPARTIALRATIOS 9
 static const float gcPartialsRatios[NPARTIALRATIOS] = { 0.5f, 1.f, 2.f, 2.9986f, 4.033f, 5.9997f, 8.01f, 10.093f, 11.330f };
+
+class TestSine
+{
+public:
+   
+   TestSine(){}
+   
+   void set_freq(const float frq){
+      _ph_incr = TWO_PI*frq/AUDIO_SAMPLE_RATE;
+   }
+
+   void Process ( float *apOut, int acSamples ){
+      float* out = apOut;
+      int n = acSamples;
+      while (n--){
+         *out++ = sinf(_ph)*0.18;
+         _ph += _ph_incr;
+         if (_ph >= TWO_PI ) _ph -= TWO_PI; 
+      }
+   }
+
+private:
+   float _ph{0.f};
+   float _ph_incr{0.f};
+};
 
 
 class Eris : public AudioStream
@@ -71,7 +97,7 @@ public:
    }
 
     void SetGen1Gain( float acValue ){
-      mGen1Gain_req = acValue;
+      mGen1Gain_req = (int32_t)( acValue * Q_SCALER_32 );
    }
    
    // Gen2 Params
@@ -97,7 +123,7 @@ public:
    }
    
    void SetGen2Gain( float acValue ){
-      mGen2Gain_req = acValue;
+      mGen2Gain_req = (int32_t)( acValue * Q_SCALER_32 );
    }
    
    void SetGen2ToOut( bool acValue ){
@@ -172,13 +198,6 @@ public:
       __enable_irq();
    }
 
-   // Master (output) Gain
-   void SetMasterGain( float acValue ){
-       __disable_irq();
-      mMasterGain_req = (int32_t)( acValue * 65536 );
-      __enable_irq();
-   }
-
    // MIDI
    void TriggerMidiNote( byte acNote, byte acVel );
    void TriggerRelease();
@@ -190,21 +209,32 @@ public:
       mGen1.Init(apSeeds); 
       mGen2.Init(apSeeds); 
    }
-   
+private:
+   static void f2fix(const float* apIn, int16_t* apOut, int acsamples){
+      float* src = (float*)apIn; 
+      int16_t* dst = (int16_t*)apOut;
+      const int16_t* oend = (int16_t*)(apOut + acsamples);
+      do {
+         *dst++ = saturate16( (*src++) * Q_SCALER_16 ); 
+      } while (dst < oend);
+   }
+    static void fix2f(const int16_t* apIn, float* apOut, int acsamples){
+      int16_t* src = (int16_t*)apIn; 
+      float* dst = (float*)apOut;
+      const float* oend = (float*)(apOut + acsamples);
+      do {
+         *dst++ = (float) (*src++ / Q_SCALER_16 ); 
+      } while (dst < oend);
+   }
 private:
 
    // params
    volatile float mVCABiasGain_req{0.f};
-   volatile int32_t mMasterGain_req{0};
-
-   volatile float mGen1Gain_req{0.f};
-   volatile float mGen2Gain_req{0.f};
-
+   volatile int32_t mGen1Gain_req{0};
+   volatile int32_t mGen2Gain_req{0};
    volatile float mGen1Rate_req{0.f};
    volatile float mGen2Rate_req{0.f};
-
    volatile float mMidiFreq_req{0.f};
-
     volatile bool  mGainMod{false};
     volatile bool  mCutMod{false};
     volatile bool  mRateMod{false};
@@ -216,10 +246,12 @@ private:
     VCFloat mVcf;
     AREnv mAREnv;
     
+    // test
+    TestSine msine;
+
     float mLastGen1Val{0.f};
     float mLastGen2Val{0.f};
-    float mGen1Gain{0.f};
-    float mGen2Gain{0.f};
+    int32_t mGen1Gain{0};
+    int32_t mGen2Gain{0};
     float mVCABiasGain{0.f};
-    float mMasterGain{0.f};
 };

@@ -26,7 +26,8 @@
 #include "utility/dspinst.h"
 
 #define ENV_PEAK_MAX 32000
-#define GAIN_STEP_PER_FRAME 0.001
+#define GAIN_STEP_PER_FRAME 0.01
+#define GAIN_STEP_PER_SAMPLE 10
 
 // Mult to Const, non-destructive vers
 // signed multiply 32x16 gets:
@@ -99,12 +100,11 @@ public:
    }
    
    void SetGain( float acValue ){
-      mPeak_req = acValue;
+      mPeak_req = (int32_t)( acValue * 65536 );
    }
 
    void SetBiasGain( float acValue ){
-      mBias_req = acValue;
-      //mCurBias = mBias_req; // temp
+      mBias_req = (int32_t)( acValue * 65536 );
    }
 
    bool Done(){ return mState==EnvState_Off; }
@@ -115,14 +115,14 @@ private:
     // Params
     volatile long mAttack_req{1};  // in samps
     volatile long mRelease_req{1};  // in samps
-    volatile float  mPeak_req{0.f};
-    volatile float  mBias_req{0.f}; // bias gain
+    volatile int32_t  mPeak_req{0};
+    volatile int32_t  mBias_req{0}; // bias gain
     volatile EnvState mState{EnvState_Off};
     
     long mAttack {1}; // in samps
     long mRelease {1}; // in samps
-    float mCurPeak {0.f};
-    float mCurBias {0.f};
-    float mStep {0.f};
+    int32_t mCurPeak {0};
+    int32_t mCurBias {0};
+    int32_t mStep {0};
 };
 

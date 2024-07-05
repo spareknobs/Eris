@@ -38,59 +38,34 @@ Eris::Eris() : AudioStream( 0, NULL ){
    mAREnv.SetGain(1.f);
    mAREnv.SetAttackMs(100.f);
    mAREnv.SetReleaseMs(200.f);
+   msine.set_freq(400);
 }
-     
- void Eris::update(void){
+
+// test update
+  /* void Eris::update(void){
 
    float blockGen1[AUDIO_BLOCK_SAMPLES];
-   float blockGen2[AUDIO_BLOCK_SAMPLES];
-   float blockLfo[AUDIO_BLOCK_SAMPLES];
-
+   int16_t blockGen1t[AUDIO_BLOCK_SAMPLES];
+   int16_t blockGen2t[AUDIO_BLOCK_SAMPLES];
    audio_block_t *blockout;
    blockout = allocate();
    if (!blockout) return; 
 
    memset(blockGen1, 0, AUDIO_BLOCK_SAMPLES * sizeof(float));
-   memset(blockGen2, 0, AUDIO_BLOCK_SAMPLES * sizeof(float));
-   memset(blockLfo, 0, AUDIO_BLOCK_SAMPLES * sizeof(float));
+   memset(blockGen1t, 0, AUDIO_BLOCK_SAMPLES * sizeof(int16_t));
+   memset(blockGen2t, 0, AUDIO_BLOCK_SAMPLES * sizeof(int16_t));
+   
+   msine.Process(blockGen1, AUDIO_BLOCK_SAMPLES);
 
-   // Process Gen2 - todo: use prev gen1 buf as ctrl sig?
-   mGen2.Process( blockGen2, blockGen2, 0.f, AUDIO_BLOCK_SAMPLES );   
+   //mGen1.Process( blockGen1, blockLfo, 0, AUDIO_BLOCK_SAMPLES );
 
-   // Gen2 --> Lfo - make unipolar & expand
-   for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
-      float val = 0.5f * blockGen2[n] + 0.5f;
-      blockLfo[n] = val * val * mGen2Gain;
-   }
-         
-   // Update Gen2 Gain
-   float *op2 = (float *)blockGen2;
-   const float *oend2 = (float *)(blockGen2 + AUDIO_BLOCK_SAMPLES);
-    
-   do {
-         if ( mGen2Gain < mGen2Gain_req ){
-            mGen2Gain += GAIN_RAMP_STEP;
-            if ( mGen2Gain > mGen2Gain_req )  mGen2Gain = mGen2Gain_req; 
-         }
-         else if ( mGen2Gain > mGen2Gain_req ){
-            mGen2Gain -= GAIN_RAMP_STEP;
-            if ( mGen2Gain < mGen2Gain_req )  mGen2Gain = mGen2Gain_req; 
-         }
+   f2fix(blockGen1, blockGen1t, AUDIO_BLOCK_SAMPLES);
 
-        float tmp = *op2;
-        float val = mGen2Gain * tmp;
-        *op2++ = val;
-        
-   } while (op2 < oend2);
+   memcpy( blockGen2t, blockGen1t, AUDIO_BLOCK_SAMPLES * sizeof(int16_t) );
 
-   // Modulate Gen1 Rate with Lfo according to RateMod switch
-   float vRateMod = (float)mRateMod;
-   mGen1.Process( blockGen1, blockLfo, vRateMod, AUDIO_BLOCK_SAMPLES );
-
-   // Update Gen1 Gain @ sr
-   float *op = (float *)blockGen1;
-   const float *oend = (float *)(blockGen1 + AUDIO_BLOCK_SAMPLES);
-    
+   // Gen1 Gain @ sr
+   int16_t *opt = (int16_t*)blockGen1t; 
+   const int16_t* oendt = (int16_t*)(blockGen1t + AUDIO_BLOCK_SAMPLES);
    do {
          if ( mGen1Gain < mGen1Gain_req ){
             mGen1Gain += GAIN_RAMP_STEP;
@@ -100,32 +75,113 @@ Eris::Eris() : AudioStream( 0, NULL ){
             mGen1Gain -= GAIN_RAMP_STEP;
             if ( mGen1Gain < mGen1Gain_req )  mGen1Gain = mGen1Gain_req; 
          }
+        int16_t tmp = *opt;
+        *opt++ = ( mGen1Gain * tmp ) >> 16;
+   } while (opt < oendt);
 
-        float tmp = *op;
-        float val1 = mGen1Gain * tmp;
-        *op++ = val1;
-        
-   } while (op < oend);
+   for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
+      int16_t vmix = signed_add_16_and_16(blockGen1t[n],blockGen2t[n]);
+      blockout->data[n] = vmix;
+   }
+
+   //memcpy( blockout->data, blockGen1t, AUDIO_BLOCK_SAMPLES * sizeof(int16_t) );
+
+   // Process AR
+   //mAREnv.Process( blockout, AUDIO_BLOCK_SAMPLES );
+
+   // (double mono for now)
+   transmit( blockout,0 );
+   transmit( blockout,1 );   
+   release( blockout );
+ }*/
+
+ void Eris::update(void){
+
+   float blockGen1[AUDIO_BLOCK_SAMPLES];
+   int16_t blockGen1t[AUDIO_BLOCK_SAMPLES];
+   float blockGen2[AUDIO_BLOCK_SAMPLES];
+   int16_t blockGen2t[AUDIO_BLOCK_SAMPLES];
+   float blockLfo[AUDIO_BLOCK_SAMPLES];
+
+   audio_block_t *blockout;
+   blockout = allocate();
+   if (!blockout) return; 
+
+   memset(blockGen1, 0, AUDIO_BLOCK_SAMPLES * sizeof(float));
+   memset(blockGen2, 0, AUDIO_BLOCK_SAMPLES * sizeof(float));
+   memset(blockGen1t, 0, AUDIO_BLOCK_SAMPLES * sizeof(int16_t));
+   memset(blockGen2t, 0, AUDIO_BLOCK_SAMPLES * sizeof(int16_t));
+   memset(blockLfo, 0, AUDIO_BLOCK_SAMPLES * sizeof(float));
+
+   mGen2.Process( blockGen2, blockGen2, 0.f, AUDIO_BLOCK_SAMPLES );   
+         
+   f2fix(blockGen2, blockGen2t, AUDIO_BLOCK_SAMPLES);
+
+   // Update Gen2 Gain
+   int16_t *op2 = (int16_t*)blockGen2t; 
+   const int16_t* oend2 = (int16_t*)(blockGen2t + AUDIO_BLOCK_SAMPLES);
+   do {
+         if ( mGen2Gain < mGen2Gain_req ){
+            mGen2Gain += GAIN_RAMP_STEP;
+            if ( mGen2Gain > mGen2Gain_req )  mGen2Gain = mGen2Gain_req; 
+         }
+         else if ( mGen2Gain > mGen2Gain_req ){
+            mGen2Gain -= GAIN_RAMP_STEP;
+            if ( mGen2Gain < mGen2Gain_req )  mGen2Gain = mGen2Gain_req; 
+         }
+        int16_t tmp = *op2;
+        *op2++ = ( mGen2Gain * tmp ) >> 16;
+   } while (op2 < oend2);
+
+   // Gen2 --> Lfo - make unipolar & expand
+   for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
+      float val =  (float)blockGen2t[n] * Q_DIV_16;
+      val = 0.5 * val + 0.5; 
+      blockLfo[n] = val * val * 2.0; // scale up 
+   }
+
+   // Modulate Gen1 Rate with Lfo
+   float vRateMod = (float)mRateMod;
+   mGen1.Process( blockGen1, blockLfo, vRateMod, AUDIO_BLOCK_SAMPLES );
+   f2fix(blockGen1, blockGen1t, AUDIO_BLOCK_SAMPLES);
+
+   // Gen1 Gain @ sr
+   int16_t *op1 = (int16_t*)blockGen1t; 
+   const int16_t* oend1 = (int16_t*)(blockGen1t + AUDIO_BLOCK_SAMPLES);
+   do {
+         if ( mGen1Gain < mGen1Gain_req ){
+            mGen1Gain += GAIN_RAMP_STEP;
+            if ( mGen1Gain > mGen1Gain_req )  mGen1Gain = mGen1Gain_req; 
+         }
+         else if ( mGen1Gain > mGen1Gain_req ){
+            mGen1Gain -= GAIN_RAMP_STEP;
+            if ( mGen1Gain < mGen1Gain_req )  mGen1Gain = mGen1Gain_req; 
+         }
+        int16_t tmp = *op1;
+        *op1++ = ( mGen1Gain * tmp ) >> 16;
+   } while (op1 < oend1);
    
    // save a value for controlling LEDs
    mLastGen1Val = blockGen1[0] * blockGen1[0];
    mLastGen2Val = blockGen2[0] * blockGen2[0];
    
    if (mGen2ToOut){
-      // mix gens --> out
       for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
-         blockGen1[n] += blockGen2[n];
+         int16_t vmix = signed_add_16_and_16(blockGen1t[n],blockGen2t[n]);
+         blockGen1t[n] = vmix;
       }
    }
+
+   // temp
+   fix2f(blockGen1t,blockGen1,AUDIO_BLOCK_SAMPLES);
 
    // Process Filter 
    mVcf.Process( blockGen1, blockGen1, blockLfo );
 
-   // Write to fixed point output
-   for ( int n=0; n < AUDIO_BLOCK_SAMPLES; ++n ) {
-      float val = blockGen1[n];
-      blockout->data[n] = saturate16( val * 32767.0 );
-   }
+   // temp
+   f2fix(blockGen1, blockout->data, AUDIO_BLOCK_SAMPLES);
+
+   //memcpy( blockout->data, blockGen1t, AUDIO_BLOCK_SAMPLES * sizeof(int16_t) );
 
    // Process AR
    mAREnv.Process( blockout, AUDIO_BLOCK_SAMPLES );
