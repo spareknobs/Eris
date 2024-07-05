@@ -21,7 +21,7 @@
 
 #pragma once
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include "AudioStream.h"
 #include "utility/dspinst.h"
 

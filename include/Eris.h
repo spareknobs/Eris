@@ -24,7 +24,8 @@
 #include "utility/dspinst.h"
 #include "AREnv.h"
 #include "GenDyn.h"
-#include "VCFloat.h"
+//#include "VCFloat.h"
+#include "VCFixed.h"
 #include "MIDI.h"
 
 #define Q_SCALER_16 32767.0
@@ -130,7 +131,9 @@ public:
       mGen2ToOut = acValue;
    }
    
+   // 0=HI 1=LO
    void SetGen2Range( const bool acValue ){
+      mGen2Range = acValue;
       mGen2.SetFreqRange(acValue);
    }
 
@@ -240,10 +243,12 @@ private:
     volatile bool  mRateMod{false};
     volatile bool  mGen2ToOut{false};
     volatile bool  mSyncGens{false};
+    volatile bool  mGen2Range{false}; // 0=HI 1=LO
 
     GenDyn mGen1;
     GenDyn mGen2;
-    VCFloat mVcf;
+    //VCFloat mVcf;
+    VCFixed mVcf;
     AREnv mAREnv;
     
     // test

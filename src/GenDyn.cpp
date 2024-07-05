@@ -80,8 +80,8 @@ void GenDyn::Process ( float *apOut, float *apCtl, float acFMAmount, int acSampl
         // interp btw prev point and current(target) point
         float val = LagrangeInterp( mx, my0, my1, my2 );
 
-        // ctl signal is strictly unipolar 0..1
-        float vfrange = FREQ_MAX_FM - mFreq;
+        // FM with ctl signal 
+        float vfrange = min(FREQ_MAX-mFreq, mFreq-FREQ_MIN);
         float vf = mFreq + acFMAmount * vfrange * (*ctl);
 
         // mod numKP with freq in order to achieve higher freq range
@@ -280,7 +280,7 @@ void GenDyn::SetFreq( float acValue ){
 
 void GenDyn::SetFreqNorm( float acValue ){
     mFreqNorm = Clip(acValue,0.f,1.f);
-    mFreq = mFreqMin + mFreqNorm * (mFreqMax-mFreqMin);
+    mFreq = mFreqMin + acValue * (mFreqMax-mFreqMin);
 }
 
 void GenDyn::SetFreqRange(int acRange){

@@ -31,16 +31,15 @@
 
 #pragma once
 
-#include "Arduino.h"
+#include <Arduino.h>
 #include "AudioStream.h"
 #include "utility/dspinst.h"
 
 #define FREQ_RAMP_STEP_FRACT 0.1f
 #define FREQ_MIN 20
 #define FREQ_MAX 4500
-#define LFO_FREQ_MIN 0.1f
-#define LFO_FREQ_MAX 10.f
-#define FREQ_MAX_FM 4500
+#define LFO_FREQ_MIN 0.05f
+#define LFO_FREQ_MAX 20.f
 #define PARAM_MIN 0.00001f
 #define PARAM_MAX 1.f
 #define SCALE_MIN 0.025f
@@ -92,7 +91,8 @@ public:
    void SetScale( float acValue );
    void SetParam( float acValue );
    void SetSamplerate( float acValue );
-    float FreqNorm(){ return mFreqNorm; }
+   float FreqNorm(){ return mFreqNorm; }
+   float Freq(){ return mFreq; }
 
 private:
     float ComputeInterpDist( float acParam2, float acLfo );

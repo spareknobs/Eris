@@ -30,7 +30,7 @@
 //#define CPU_TEST
 
 // uncommet to enable MIDI capabilities (work in progress!)
-//#define ENABLE_MIDI
+#define ENABLE_MIDI
 #define INT_LED 13
 #define LOOP_TIME 1  // control rate (ms) 
 #define KNOB_FILTER_LENGTH 20
@@ -151,7 +151,6 @@ void ReadKnobs(){
                 // This master knob sets the VCA Bias Gain - bypassed when Receiving MIDI
                 vval *= vval;
                 module.SetVCABiasGain(vval);
-                //module.SetMasterGain( vval );
             break;
             
             case SCALE2:
@@ -203,7 +202,7 @@ void ReadSwitches(){
     module.SetRateMod( (bool)!digitalRead(RATEMOD) );
     module.SetCutoffMod( (bool)!digitalRead(CUTMOD) );
     module.SetGen2ToOut( (bool)!digitalRead(GEN2OUT) );
-    module.SetGen2Range( digitalRead(RANGE) ); // note: this down
+    module.SetGen2Range( (bool)digitalRead(RANGE) ); // pullup, thus off=LO, on=HI
     module.SyncGens( (bool)!digitalRead(SYNC) );
 }
 
@@ -269,11 +268,13 @@ void ControlChange(byte channel, byte cc, byte val) {
       module.SetAttackMs(val * DIV127 * 3000.f);
       break;
     case 71:
+    {
       float ms = (float)val * DIV127 * 3000.f;
       module.SetReleaseMs(ms);
       break;
+    }
     case 73:
-      //module.SetVCABiasGain( (float)val * DIV127);
+      module.SetVCABiasGain( (float)val * DIV127);
       break;
     
     default:
